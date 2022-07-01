@@ -19,7 +19,6 @@ namespace Server
             this.Address = Address;
         }
     }
-
     public class Clerk: Person, ISendAble, IClerk
     {
         public long Id { get; set; }
@@ -38,7 +37,6 @@ namespace Server
             this.IsAdmin = IsAdmin;
         }
     }
-
     public class Customer : Person, ISendAble, ICustomer
     {
         public long Id { get; set; }
@@ -61,7 +59,6 @@ namespace Server
             Balance = 0;
         }
     }
-
     class Cake: IProduct, ISendAble
     {
         public long Id { get; set; }
@@ -83,7 +80,6 @@ namespace Server
             this.Code = Code;
         }
     }
-
     class Order:ISendAble, IOrder
     {
         public long Id { get; set; }
@@ -101,5 +97,45 @@ namespace Server
         public string OrderCode { get; }
         public Dictionary<IProduct, int> Products = new Dictionary<IProduct, int>();
 
+    }
+    class Requst
+    {
+        public bool clerk, cutomer, product, order;
+        public List<ISendAble> objects;
+    }
+    class Search: Requst, ISendAble
+    {
+        public long Id { get; set; }
+        public bool IsNew { get; set; }
+        public bool Edited { get; set; }
+        public bool Removed { get; set; }
+        public bool Select { get; set; }
+        public ISendAble Up, Down;
+        public Search()
+        {
+            Select = true;IsNew = false;Edited = false;Removed = false;
+            clerk = false; cutomer = false; product = false; order = false; 
+        }
+    }
+    class ClientToServer: Requst
+    {
+        public string UserName, Password;
+        public bool Select, Apply;
+        public ISendAble SelectObject;
+        public ClientToServer(string UserName, string Password)
+        {
+            this.UserName = UserName;
+            this.Password = Password;
+        }
+    }
+    class ServerToClient: Requst
+    {
+        public bool ClerkAccept;
+        public List<Status> Statuses;
+    }
+    class Status
+    {
+        public bool Done;
+        public string Description;
     }
 }
