@@ -26,7 +26,6 @@ namespace Server
         string Description { get;}
         string Code { get; }
     }
-    
     interface ICustomer
     {
         long Balance { get; set; }
@@ -34,11 +33,17 @@ namespace Server
         long OrderCountRemove { get; set; }
         string SubscribeCode { get; }
     }
-
     interface IClerk
     {
         string UserName { get; }
         string Password { get; }
         bool IsAdmin { get; set; }
+    }
+    interface IOrder
+    {
+        int Hour { get; set; }
+        long TotalPrice { get;}
+        string OrederNumber { get; }
+        string OrderCode { get;}
     }
 }

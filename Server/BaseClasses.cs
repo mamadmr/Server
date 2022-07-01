@@ -83,4 +83,23 @@ namespace Server
             this.Code = Code;
         }
     }
+
+    class Order:ISendAble, IOrder
+    {
+        public long Id { get; set; }
+        public bool IsNew { get; set; }
+        public bool Edited { get; set; }
+        public bool Removed { get; set; }
+        public bool Select { get; set; }
+
+        public  int Hour { get; set; }
+        public long TotalPrice 
+        { 
+                get { return Products.Select(x => x.Key.Price*x.Value).Sum(); }
+        }
+        public string OrederNumber { get; }
+        public string OrderCode { get; }
+        public Dictionary<IProduct, int> Products = new Dictionary<IProduct, int>();
+
+    }
 }
