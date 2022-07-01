@@ -117,15 +117,19 @@ namespace Server
             clerk = false; cutomer = false; product = false; order = false; 
         }
     }
-    class ClientToServer: Requst
+    class ClientToServer : Requst
     {
         public string UserName, Password;
-        public bool Select, Apply;
+        public bool Select {get;}
+        public bool Apply{get;}
+
         public ISendAble SelectObject;
-        public ClientToServer(string UserName, string Password)
+        public ClientToServer(string UserName, string Password, bool Select, bool Apply)
         {
             this.UserName = UserName;
             this.Password = Password;
+            this.Select = Select;
+            this.Apply = Apply;
         }
     }
     class ServerToClient: Requst

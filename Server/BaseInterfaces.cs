@@ -8,8 +8,7 @@ namespace Server
 {
     interface Itransfer
     {
-        string Read();
-        string Write(string json);
+        string Request(string json);
     }
     interface ISendAble
     {

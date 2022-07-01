@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="BaseClasses.cs" />
     <Compile Include="BaseInterfaces.cs" />
+    <Compile Include="Socket.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
