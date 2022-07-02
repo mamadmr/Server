@@ -14,6 +14,7 @@ namespace Server
         IPAddress ipAddress;
         IPEndPoint localEndPoint;
         Socket listener;
+        RequstHandler requstHandler;
         private void init()
         {
             try
@@ -36,6 +37,7 @@ namespace Server
         public MySocket()
         {
             init();
+            requstHandler = new RequstHandler();
         }
         public void Read()
         {
@@ -55,9 +57,9 @@ namespace Server
                     break;
                 }
             }
-            Console.WriteLine(data);
-
-            byte[] msg = Encoding.ASCII.GetBytes("everything is good");
+            data = data.Substring(0, data.Length-5);
+            string answer = requstHandler.requst(data);
+            byte[] msg = Encoding.ASCII.GetBytes(answer);
             handler.Send(msg);
         }
     }
