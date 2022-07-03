@@ -8,10 +8,10 @@ namespace Server
 {
     public class Person
     {
-        public string Name { get; }
-        public string PhoneNumber { get; }
-        public string Address { get; }
-        
+        public string Name { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Address { get; set; }
+
         public Person(string Name, string PhoneNumber, string Address)
         {
             this.Name = Name;
@@ -19,18 +19,17 @@ namespace Server
             this.Address = Address;
         }
     }
-    public class Clerk: Person, ISendAble, IClerk
+    public class Clerk : Person, ISendAble, IClerk
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
-        public bool Edited { get; set; }
         public bool Removed { get; set; }
         public bool Select { get; set; }
-        public string UserName { get; }
-        public string Password { get; }
+        public string UserName { get; set; }
+        public string Password { get; set; }
         public bool IsAdmin { get; set; }
         public Clerk(string Name, string PhoneNumber, string Address, string UserName, string Password, bool IsAdmin)
-            :base(Name, PhoneNumber, Address)
+            : base(Name, PhoneNumber, Address)
         {
             this.UserName = UserName;
             this.Password = Password;
@@ -59,7 +58,7 @@ namespace Server
             Balance = 0;
         }
     }
-    class Cake: IProduct, ISendAble
+    class Cake : IProduct, ISendAble
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
@@ -80,7 +79,7 @@ namespace Server
             this.Code = Code;
         }
     }
-    class Order:ISendAble, IOrder
+    class Order : ISendAble, IOrder
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
@@ -88,10 +87,10 @@ namespace Server
         public bool Removed { get; set; }
         public bool Select { get; set; }
 
-        public  int Hour { get; set; }
-        public long TotalPrice 
-        { 
-                get { return Products.Select(x => x.Key.Price*x.Value).Sum(); }
+        public int Hour { get; set; }
+        public long TotalPrice
+        {
+            get { return Products.Select(x => x.Key.Price * x.Value).Sum(); }
         }
         public string OrederNumber { get; }
         public string OrderCode { get; }
@@ -101,9 +100,12 @@ namespace Server
     class Requst
     {
         public bool clerk, cutomer, product, order;
-        public List<ISendAble> objects;
+        public ISendAble SelectObject;
+        public List<ISendAble> Objects;
+
+
     }
-    class Search: Requst, ISendAble
+    class Search : Requst, ISendAble
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
@@ -113,29 +115,28 @@ namespace Server
         public ISendAble Up, Down;
         public Search()
         {
-            Select = true;IsNew = false;Edited = false;Removed = false;
-            clerk = false; cutomer = false; product = false; order = false; 
+            Select = true; IsNew = false; Edited = false; Removed = false;
+            clerk = false; cutomer = false; product = false; order = false;
         }
     }
     class ClientToServer : Requst
     {
         public string UserName, Password;
-        public bool Select {get;}
-        public bool Apply{get;}
-
-        public ISendAble SelectObject;
+        public bool Select { get; }
+        public bool Apply { get; }
         public ClientToServer(string UserName, string Password, bool Select, bool Apply)
         {
             this.UserName = UserName;
             this.Password = Password;
             this.Select = Select;
             this.Apply = Apply;
+            clerk = false; cutomer = false; product = false; order = false;
         }
     }
-    class ServerToClient: Requst
+    class ServerToClient : Requst
     {
         public bool ClerkAccept;
-        public List<Status> Statuses;
+        public Status response;
     }
     class Status
     {

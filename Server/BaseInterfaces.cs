@@ -12,17 +12,16 @@ namespace Server
     }
     interface ISendAble
     {
-        long Id { get;}
+        long Id { get; }
         bool IsNew { get; }
-        bool Edited { get;}
-        bool Removed { get;}
+        bool Removed { get; }
         bool Select { get; }
     }
     interface IProduct
     {
-        long Price { get;}
-        string Name { get;}
-        string Description { get;}
+        long Price { get; }
+        string Name { get; }
+        string Description { get; }
         string Code { get; }
     }
     interface ICustomer
@@ -41,8 +40,10 @@ namespace Server
     interface IOrder
     {
         int Hour { get; set; }
-        long TotalPrice { get;}
+        long TotalPrice { get; }
         string OrederNumber { get; }
-        string OrderCode { get;}
+        string OrderCode { get; }
     }
 }
+
+

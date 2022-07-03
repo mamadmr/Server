@@ -1,5 +1,13 @@
 ﻿using Newtonsoft.Json;
 using System.Data.SQLite;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Server
 {
@@ -22,14 +30,17 @@ namespace Server
             cmd.CommandText = request;
             cmd.ExecuteScalar();
         }
-        public string ReadReqest(string input)
+        public List<Dictionary<string, object>> ReadReqest(string input)
         {
             SQLiteCommand cmd = new SQLiteCommand(conn);
 
             cmd.CommandText =input;
             SQLiteDataReader reader = cmd.ExecuteReader();
 
-            string temp =  reader.Read().ToString();
+            var temp = new List<Dictionary<string, object>>(); 
+            while(reader.Read())
+                temp.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(reader.GetName, reader.GetValue));
+            
             reader.Close();
             return temp;
 
@@ -37,19 +48,48 @@ namespace Server
     }
     static class LogIn
     {
-        public static string check(string username, string passoword)
+        public static string check(string username, string password)
         {
             DataBaseWork work = new DataBaseWork();
-            return work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{passoword}'");
+            var x = work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{password}'");
+            if (x.Count > 0)
+            {
+                return "True";
+            }
+            return "False";
             
+        }
+    }
+
+    static class ClerkHandler
+    {
+        private static bool check_admin(string username, string password)
+        {
+            DataBaseWork work = new DataBaseWork();
+            var x = work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{password}'");
+            return (long)(x[0]["IsAdmin"]) == 1;
+        }
+        public static string check(ClientToServer item)
+        {
+
+            if (!check_admin(item.UserName, item.Password))
+            {
+                return "Not Admin";
+            }
+            return "None";
         }
     }
     class RequstHandler
     {
         public string requst(string input)
         {
-            ClientToServer item = JsonConvert.DeserializeObject<ClientToServer>(input);
+            var settings = new JsonSerializerSettings()
+            {
+                TypeNameHandling = TypeNameHandling.Objects
+            };
+            ClientToServer item = (ClientToServer)JsonConvert.DeserializeObject(input, settings);
             if (!item.Apply && !item.Select) return LogIn.check(item.UserName, item.Password);
+            else if (item.clerk) return ClerkHandler.check(item);
             return "Nothing";
         }
     }
