@@ -76,7 +76,7 @@ namespace Server
             {
                 return "Not Admin";
             }
-            return "None";
+            return "accept and add correctly";
         }
     }
     class RequstHandler
