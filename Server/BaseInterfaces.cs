@@ -12,10 +12,10 @@ namespace Server
     }
     interface ISendAble
     {
-        long Id { get; }
-        bool IsNew { get; }
-        bool Removed { get; }
-        bool Select { get; }
+        long Id { get; set; }
+        bool IsNew { get; set; }
+        bool Removed { get; set; }
+        bool Select { get; set; }
     }
     interface IProduct
     {

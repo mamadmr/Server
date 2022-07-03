@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Server
@@ -58,9 +59,18 @@ namespace Server
                 }
             }
             data = data.Substring(0, data.Length-5);
-            string answer = requstHandler.requst(data);
-            byte[] msg = Encoding.ASCII.GetBytes(answer);
+            string json = requstHandler.requst(data);
+
+            json = Regex.Replace(json,"Server\"", "Client\"");
+            json = Regex.Replace(json, "\"Server", "\"Client");
+            json = Regex.Replace(json, "\\[Server", "[Client");
+            json = Regex.Replace(json,"Server\\]", "Client]");
+            json = Regex.Replace(json, "mscorlib", "System.Private.CoreLib");
+
+            byte[] msg = Encoding.ASCII.GetBytes(json);
             handler.Send(msg);
         }
+           
+
     }
 }
