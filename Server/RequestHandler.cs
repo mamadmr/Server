@@ -11,6 +11,15 @@ using System.Threading.Tasks;
 
 namespace Server
 {
+    public static class Handler
+    {
+        public static bool check_user(string username, string password)
+        {
+            DataBaseWork work = new DataBaseWork();
+            var x = work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{password}'");
+            return x.Count >= 1;
+        }
+    }
     class DataBaseWork
     {
         SQLiteConnection conn;
@@ -142,15 +151,9 @@ namespace Server
     }
     static class CakeHandler
     {
-        private static bool check_user(string username, string password)
-        {
-            DataBaseWork work = new DataBaseWork();
-            var x = work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{password}'");
-            return  x.Count >= 1;
-        }
         public static string check(ClientToServer item)
         {
-            if (!check_user(item.UserName, item.Password)) return "your username or password has been expired";
+            if (!Handler.check_user(item.UserName, item.Password)) return "your username or password has been expired";
             if (item.Apply)
             {
                 foreach (Cake x in item.Objects)
@@ -208,6 +211,79 @@ namespace Server
             }
         }
     }
+    
+    static class CustomerHandler
+    {
+        public static string check(ClientToServer item)
+        {
+            if (!Handler.check_user(item.UserName, item.Password)) return "your username or password has been expired";
+            if (item.Apply)
+            {
+                foreach (Customer x in item.Objects)
+                {
+                    DataBaseWork work = new DataBaseWork();
+                    if (x.IsNew)
+                    {
+                        var db = work.ReadReqest($"INSERT INTO customers (Name, PhoneNumber, Address, Money, OrderCountRecieve, OrderCountRemove, SubscribeCode)" +
+                         $"VALUES('{x.Name}','{x.PhoneNumber}', '{x.Address}' , {x.Balance}, {x.OrderCountRecive}, {x.OrderCountRemove}, {x.SubscribeCode})");
+                    }
+                    else if (x.Removed)
+                    {
+                        var db = work.ReadReqest($"DELETE FROM customers WHERE Id={x.Id}");
+                    }
+                    else
+                    {
+                        var db = work.ReadReqest($"UPDATE customers " +
+                                                $"SET " +
+                                                $"Name='{x.Name}'," +
+                                                $"PhoneNumber= {x.PhoneNumber}, " +
+                                                $"Address='{x.Address}', " +
+                                                $"Money={x.Balance} " +
+                                                $"WHERE Id={x.Id}");
+                    }
+                }
+                return "Done";
+            }
+            else
+            {
+                Customer cls = (Customer)item.SelectObject;
+                DataBaseWork work = new DataBaseWork();
+                long temp = 0;
+                if (cls.SubscribeCode != "") temp = Int64.Parse(cls.SubscribeCode);
+                
+                var x = work.ReadReqest($"SELECT * FROM customers WHERE " +
+                                        $"(Name='{cls.Name}' OR '{cls.Name}'='') AND " +
+                                        $"(Money={cls.Balance} OR {cls.Balance}=0) AND " +
+                                        $"(PhoneNumber='{cls.PhoneNumber}' OR '{cls.PhoneNumber}'='') AND" +
+                                        $"(SubscribeCode={temp} OR {temp}=0)");
+
+                ServerToClient answer = new ServerToClient();
+                answer.Objects = new List<ISendAble>();
+
+                foreach (var selected in x)
+                {
+                    ISendAble cler = new Customer((string)selected["Name"], (string)selected["PhoneNumber"], (string)selected["Address"],
+                        selected["SubscribeCode"].ToString());
+                    ((Customer)cler).Balance = (long)selected["Money"];
+                    ((Customer)cler).OrderCountRecive = (long)selected["OrderCountRecieve"];
+                    ((Customer)cler).OrderCountRemove = (long)selected["OrderCountRemove"];
+
+                    cler.Id = (long)selected["Id"];
+                    answer.Objects.Add(cler);
+                }
+
+                MySocket mySocket = new MySocket();
+                var indented = Formatting.Indented;
+                var settings = new JsonSerializerSettings()
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                };
+                string data = JsonConvert.SerializeObject(answer, indented, settings);
+                return data;
+            }
+        }
+    }
+    
     class RequstHandler
     {
         public string requst(string input)
@@ -220,6 +296,7 @@ namespace Server
             if (!item.Apply && !item.Select) return LogIn.check(item.UserName, item.Password);
             else if (item.clerk) return ClerkHandler.check(item);
             else if (item.product) return CakeHandler.check(item);
+            else if(item.cutomer) return CustomerHandler.check(item);
             return "Nothing";
         }
     }
