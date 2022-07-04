@@ -25,7 +25,9 @@ namespace Server
         SQLiteConnection conn;
         private void init()
         {
-            conn = new SQLiteConnection(@"Data Source=MyDataBase.db");
+            string temp = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            temp = temp.Substring(0, temp.Length - 20);
+            conn = new SQLiteConnection($"Data Source={temp}MyDataBase.db");
             conn.Open();
             
         }
