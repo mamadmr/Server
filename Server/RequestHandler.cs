@@ -60,7 +60,6 @@ namespace Server
             
         }
     }
-
     static class ClerkHandler
     {
         private static bool check_admin(string username, string password)
@@ -141,6 +140,74 @@ namespace Server
             }
         }
     }
+    static class CakeHandler
+    {
+        private static bool check_user(string username, string password)
+        {
+            DataBaseWork work = new DataBaseWork();
+            var x = work.ReadReqest($"SELECT * FROM clerks WHERE UserName='{username}' AND Password='{password}'");
+            return  x.Count >= 1;
+        }
+        public static string check(ClientToServer item)
+        {
+            if (!check_user(item.UserName, item.Password)) return "your username or password has been expired";
+            if (item.Apply)
+            {
+                foreach (Cake x in item.Objects)
+                {
+                    DataBaseWork work = new DataBaseWork();
+                    if (x.IsNew)
+                    {
+                        var db = work.ReadReqest($"INSERT INTO cakes (Name, Price, Description)" +
+                         $"VALUES('{x.Name}',{x.Price}, '{x.Description}')");
+                    }
+                    else if (x.Removed)
+                    {
+                        var db = work.ReadReqest($"DELETE FROM cakes WHERE Id={x.Id}");
+                    }
+                    else
+                    {
+                        var db = work.ReadReqest($"UPDATE cakes " +
+                                                $"SET " +
+                                                $"Name='{x.Name}'," +
+                                                $"Price= {x.Price}," +
+                                                $"Description='{x.Description}' " +
+                                                $"WHERE Id={x.Id}");
+                    }
+                }
+                return "Done";
+            }
+            else
+            {
+                Cake cls = (Cake)item.SelectObject;
+                DataBaseWork work = new DataBaseWork();
+                var x = work.ReadReqest($"SELECT * FROM cakes WHERE " +
+                                        $"(Name='{cls.Name}' OR '{cls.Name}'='') AND " +
+                                        $"(Price={cls.Price} OR {cls.Price}=0) AND " +
+                                        $"(Description='{cls.Description}' OR '{cls.Description}'='')");
+
+                ServerToClient answer = new ServerToClient();
+                answer.Objects = new List<ISendAble>();
+
+                foreach (var selected in x)
+                {
+                    ISendAble cler = new Cake((long)selected["Price"], (string)selected["Name"],
+                                                (string)selected["Description"]);
+                    cler.Id = (long)selected["Id"];
+                    answer.Objects.Add(cler);
+                }
+
+                MySocket mySocket = new MySocket();
+                var indented = Formatting.Indented;
+                var settings = new JsonSerializerSettings()
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                };
+                string data = JsonConvert.SerializeObject(answer, indented, settings);
+                return data;
+            }
+        }
+    }
     class RequstHandler
     {
         public string requst(string input)
@@ -152,6 +219,7 @@ namespace Server
             ClientToServer item = (ClientToServer)JsonConvert.DeserializeObject(input, settings);
             if (!item.Apply && !item.Select) return LogIn.check(item.UserName, item.Password);
             else if (item.clerk) return ClerkHandler.check(item);
+            else if (item.product) return CakeHandler.check(item);
             return "Nothing";
         }
     }
