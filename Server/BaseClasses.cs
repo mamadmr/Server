@@ -57,12 +57,16 @@ namespace Server
             OrderCountRemove = 0;
             Balance = 0;
         }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
-    class Cake : IProduct, ISendAble
+    public class Cake : IProduct, ISendAble
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
-        public bool Edited { get; set; }
         public bool Removed { get; set; }
         public bool Select { get; set; }
 
@@ -76,34 +80,35 @@ namespace Server
             this.Name = Name;
             this.Description = Description;
         }
+        public override string ToString()
+        {
+            return Name;
+        }
     }
-    class Order : ISendAble, IOrder
+    public class Order : ISendAble, IOrder
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
-        public bool Edited { get; set; }
         public bool Removed { get; set; }
         public bool Select { get; set; }
-
         public int Hour { get; set; }
         public long TotalPrice
         {
-            get { return Products.Select(x => x.Key.Price * x.Value).Sum(); }
+            get { return Products.Select(x => x.cake.Price * x.count).Sum(); }
         }
-        public string OrederNumber { get; }
-        public string OrderCode { get; }
-        public Dictionary<IProduct, int> Products = new Dictionary<IProduct, int>();
+        public string OrderCode { get; set; }
+        public List<Item> Products = new List<Item>();
+        public Customer Customer { get; set; }
 
     }
-    class Requst
+    public class Requst
     {
         public bool clerk, cutomer, product, order;
-        public ISendAble SelectObject;
         public List<ISendAble> Objects;
-
+        public ISendAble SelectObject;
 
     }
-    class Search : Requst, ISendAble
+    public class Search : Requst, ISendAble
     {
         public long Id { get; set; }
         public bool IsNew { get; set; }
@@ -120,8 +125,8 @@ namespace Server
     class ClientToServer : Requst
     {
         public string UserName, Password;
-        public bool Select { get; }
-        public bool Apply { get; }
+        public bool Select { get; set; }
+        public bool Apply { get; set; }
         public ClientToServer(string UserName, string Password, bool Select, bool Apply)
         {
             this.UserName = UserName;
@@ -134,7 +139,7 @@ namespace Server
     class ServerToClient : Requst
     {
         public bool ClerkAccept;
-        public Status response;
+        public List<Status> Statuses;
     }
     class Status
     {
@@ -146,5 +151,12 @@ namespace Server
         public static int start_hour { get { return 6; } }
         public static int end_hour { get { return 21; } }
         public static int max_in_hour { get { return 1000; } }
+    }
+
+    public class Item
+    {
+        public Cake cake;
+        public int count { get; set; }
+        public string name { get; set; }
     }
 }

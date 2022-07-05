@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.ComponentModel;
 
 namespace Server
 {
@@ -44,16 +45,22 @@ namespace Server
         public List<Dictionary<string, object>> ReadReqest(string input)
         {
             SQLiteCommand cmd = new SQLiteCommand(conn);
+            try
+            {
+                cmd.CommandText = input;
+                SQLiteDataReader reader = cmd.ExecuteReader();
 
-            cmd.CommandText =input;
-            SQLiteDataReader reader = cmd.ExecuteReader();
+                var temp = new List<Dictionary<string, object>>();
+                while (reader.Read())
+                    temp.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(reader.GetName, reader.GetValue));
 
-            var temp = new List<Dictionary<string, object>>(); 
-            while(reader.Read())
-                temp.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(reader.GetName, reader.GetValue));
-            
-            reader.Close();
-            return temp;
+                reader.Close();
+                return temp;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
 
         }
     }
@@ -95,8 +102,15 @@ namespace Server
                     DataBaseWork work = new DataBaseWork();
                     if (clr.IsNew)
                     {
-                        var x = work.ReadReqest($"INSERT INTO clerks (Name, PhoneNumber, Address, UserName, Password, IsAdmin)" +
-                            $"VALUES('{clr.Name}', '{clr.PhoneNumber}', '{clr.Address}', '{clr.UserName}', '{clr.Password}', {temp})");
+                        try
+                        {
+                            var x = work.ReadReqest($"INSERT INTO clerks (Name, PhoneNumber, Address, UserName, Password, IsAdmin)" +
+                                $"VALUES('{clr.Name}', '{clr.PhoneNumber}', '{clr.Address}', '{clr.UserName}', '{clr.Password}', {temp})");
+                        }
+                        catch
+                        {
+                            return "User name was taken";
+                        }
                     }
                     else if (clr.Removed)
                     {
@@ -110,7 +124,7 @@ namespace Server
                             $"PhoneNumber='{clr.PhoneNumber}'," +
                             $"Address='{clr.Address}'," +
                             $"UserName='{clr.UserName}'," +
-                            $"Password='{temp}'" +
+                            $"Password='{clr.Password}'" +
                             $"WHERE Id={clr.Id}");
                     }
                 }
@@ -286,6 +300,168 @@ namespace Server
         }
     }
     
+    static class OrderHandler
+    {
+        static System.Random random;
+
+        public static bool check_money(long Id, long money)
+        {
+            DataBaseWork work = new DataBaseWork();
+            var db = work.ReadReqest($"SELECT * FROM customers WHERE Id={Id}");
+            foreach(var x in db) return (long)x["Money"]>=money;
+            return false;
+        }
+        
+        public static long product_cout(string input)
+        {
+            long count = 0;
+            foreach (Item item in JsonConvert.DeserializeObject<List<Item>>(input))
+            {
+                count += item.count;
+            }
+            return count;
+        }
+        public static Dictionary<long, long>  check_hour()
+        {
+            DataBaseWork work = new DataBaseWork();
+            Dictionary<long , long> hours = new Dictionary<long , long>();
+            for (int i = ConstValue.start_hour; i<=ConstValue.end_hour; i++)
+            {
+                hours.Add(i, 0);
+                var db = work.ReadReqest($"SELECT * FROM orders WHERE Hour={i}");
+                foreach(var x in db)
+                {
+                    hours[i] += product_cout((string)x["Products"]);
+                }
+            }
+            return hours;
+        }
+
+        static private string code_generator()
+        {
+            return random.Next(1000, 99999).ToString();
+        }
+        static public string check(ClientToServer item)
+        {
+            random = new System.Random();
+
+            if (!Handler.check_user(item.UserName, item.Password)) return "your username or password has been expired";
+            if (item.Apply)
+            {
+                foreach (Order x in item.Objects)
+                {
+                    DataBaseWork work = new DataBaseWork();
+                    if (x.IsNew)
+                    {
+
+                        string custmoer_str = JsonConvert.SerializeObject(x.Customer);
+                        string products_str = JsonConvert.SerializeObject(x.Products);
+                        if (!check_money(x.Customer.Id, x.TotalPrice)) return "Not Enoungh Money";
+                        if (check_hour()[x.Hour] + x.Products.Count > ConstValue.max_in_hour)
+                        {
+                            string temp = "this Hour is full\nyou can choose between: ";
+                            for (int i = ConstValue.start_hour; i <= ConstValue.end_hour; i++)
+                            {
+                                if (check_hour()[i] + x.Products.Count <= ConstValue.max_in_hour) temp += i.ToString() + " ";
+                            }
+                            return temp;
+                        }
+                        work.WriteRequest($"Update customers SET Money=Money-{x.TotalPrice} WHERE Id={x.Customer.Id}");
+                        x.OrderCode = code_generator();
+                        var db = work.ReadReqest($"INSERT INTO orders (OrderCode, Hour, TotalPrice,Products, Customer)" +
+                         $"VALUES('{x.OrderCode}',{x.Hour}, {x.TotalPrice} , '{products_str}', '{custmoer_str}')");
+                    }
+                    else if (x.Removed)
+                    {
+                        var dc = work.ReadReqest($"SELECT * FROM orders WHERE Id={x.Id}");
+                        work.ReadReqest($"DELETE FROM orders WHERE Id={x.Id}");
+                        try
+                        {
+                            work.WriteRequest($"Update customers SET Money=Money+{(long)((dc[0])["TotalPrice"])} WHERE Id={x.Customer.Id}");
+                        }
+                        catch
+                        {
+                            return "Not availble to give money back";
+                        }
+                    }
+                    else
+                    {
+                        string custmoer_str = JsonConvert.SerializeObject(x.Customer);
+                        string products_str = JsonConvert.SerializeObject(x.Products);
+                        var dc = work.ReadReqest($"SELECT * FROM orders WHERE Id={x.Id}");
+                        long temp_money = x.TotalPrice - (long)dc[0]["TotalPrice"];
+                        if (!check_money(x.Customer.Id, temp_money)) return "Not Enough Money";
+                        if ((long)dc[0]["Hour"] != x.Hour)
+                        {
+                            if (check_hour()[x.Hour] + x.Products.Count > ConstValue.max_in_hour)
+                            {
+                                string temp = "this Hour is full\nyou can choose between: ";
+                                for (int i = ConstValue.start_hour; i <= ConstValue.end_hour; i++)
+                                {
+                                    if (check_hour()[i] + x.Products.Count <= ConstValue.max_in_hour) temp += i.ToString() + " ";
+                                }
+                                return temp;
+                            }
+                        }
+
+                        work.WriteRequest($"Update customers SET Money=Money-{temp_money} WHERE Id={x.Customer.Id}");
+
+                        var db = work.ReadReqest($"UPDATE orders " +
+                                                $"SET " +
+                                                $"OrderCode='{x.OrderCode}'," +
+                                                $"Hour= {x.Hour}, " +
+                                                $"TotalPrice={x.TotalPrice}, " +
+                                                $"Products='{products_str}'," +
+                                                $"Customer='{custmoer_str}' " +
+                                                $"WHERE Id={x.Id}");
+                    }
+                }
+                return "Done";
+            }
+            else
+            {
+
+                Order cls = (Order)item.SelectObject;
+                DataBaseWork work = new DataBaseWork();
+                string custmoer_str = JsonConvert.SerializeObject(cls.Customer);
+                if (cls.Customer == null) custmoer_str = "";
+                var x = work.ReadReqest($"SELECT * FROM orders WHERE " +
+                                        $"(Hour={cls.Hour} OR {cls.Hour}=0) AND " +
+                                        $"(Id={cls.Id} OR {cls.Id}=0) AND " +
+                                        $"(OrderCode='{cls.OrderCode}' OR '{cls.OrderCode}'='') AND" +
+                                        $"(Customer='{custmoer_str}' OR '{custmoer_str}'='')");
+
+                ServerToClient answer = new ServerToClient();
+                answer.Objects = new List<ISendAble>();
+
+                foreach (var selected in x)
+                {
+
+                    ISendAble cler = new Order();
+                    foreach (var jj in JsonConvert.DeserializeObject<List<Item>>((string)selected["Products"]))
+                    {
+                        ((Order)cler).Products.Add(jj);
+                    }
+
+                    ((Order)cler).Customer = JsonConvert.DeserializeObject<Customer>((string)selected["Customer"]);
+                    cler.Id = (long)selected["Id"];
+                    ((Order)cler).Hour = Int32.Parse(selected["Hour"].ToString());
+                    ((Order)cler).OrderCode = (string)selected["OrderCode"];
+
+                    answer.Objects.Add(cler);
+                }
+
+                MySocket mySocket = new MySocket();
+                var indented = Formatting.Indented;
+                var settings = new JsonSerializerSettings()
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                };
+                string data = JsonConvert.SerializeObject(answer, indented, settings);
+                return data;
+            }
+        }
+    }
     class RequstHandler
     {
         public string requst(string input)
@@ -299,6 +475,7 @@ namespace Server
             else if (item.clerk) return ClerkHandler.check(item);
             else if (item.product) return CakeHandler.check(item);
             else if(item.cutomer) return CustomerHandler.check(item);
+            else if(item.order) return OrderHandler.check(item);
             return "Nothing";
         }
     }
