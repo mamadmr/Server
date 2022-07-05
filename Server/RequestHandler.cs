@@ -233,6 +233,39 @@ namespace Server
         public static string check(ClientToServer item)
         {
             if (!Handler.check_user(item.UserName, item.Password)) return "your username or password has been expired";
+            if(((Customer)item.SelectObject).Name == "**")
+            {
+                Customer cls = (Customer)item.SelectObject;
+                DataBaseWork work = new DataBaseWork();
+                long temp = 0;
+                if (cls.SubscribeCode != "") temp = Int64.Parse(cls.SubscribeCode);
+
+                var x = work.ReadReqest($"SELECT * FROM customers WHERE Money>={cls.Balance}");
+
+                ServerToClient answer = new ServerToClient();
+                answer.Objects = new List<ISendAble>();
+
+                foreach (var selected in x)
+                {
+                    ISendAble cler = new Customer((string)selected["Name"], (string)selected["PhoneNumber"], (string)selected["Address"],
+                        selected["SubscribeCode"].ToString());
+                    ((Customer)cler).Balance = (long)selected["Money"];
+                    ((Customer)cler).OrderCountRecive = (long)selected["OrderCountRecieve"];
+                    ((Customer)cler).OrderCountRemove = (long)selected["OrderCountRemove"];
+
+                    cler.Id = (long)selected["Id"];
+                    answer.Objects.Add(cler);
+                }
+
+                MySocket mySocket = new MySocket();
+                var indented = Formatting.Indented;
+                var settings = new JsonSerializerSettings()
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                };
+                string data = JsonConvert.SerializeObject(answer, indented, settings);
+                return data;
+            }
             if (item.Apply)
             {
                 foreach (Customer x in item.Objects)
